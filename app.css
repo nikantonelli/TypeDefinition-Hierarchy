@@ -1,0 +1,16 @@
+.circle {
+    stroke: #000;
+    stroke-width: 2px;
+    fill: white;
+}
+
+.link {
+    stroke: #83cbe4;
+    stroke-width: 2px;
+    fill: none;
+}
+
+.text {
+    font-size: 10px;
+    font-family: "tahoma,geneva,helvetica,arial,sans-serif";
+}

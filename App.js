@@ -19,6 +19,23 @@ Ext.define('CustomApp', {
         }
     ],
 
+    config: {
+        defaultSettings: {
+            clusterDiag: false
+        }
+    },
+
+    getSettingsFields: function() {
+        return [
+            {
+                name: 'clusterDiag',
+                xtype: 'rallycheckboxfield',
+                fieldLabel: 'Use d3.cluster',
+                labelAlign: 'top'
+            }
+        ];
+    },
+
     _appendGETPromise: function(mt) {
 
         var deferred = Ext.create('Deft.Deferred');
@@ -63,9 +80,12 @@ Ext.define('CustomApp', {
 
         //Apply the tree calc function to the nodes
         //With the sideways spider diagram, reverse the dimensions
-        d3.cluster()
-            .size([svg.attr('height'), svg.attr('width') - 250])
-            (root);
+        var treetype = d3.tree().size([svg.attr('height'), svg.attr('width') - 250]);
+
+        if (gApp.getSetting('clusterDiag')){
+            treetype = d3.cluster().size([svg.attr('height'), svg.attr('width') - 250]);
+        }
+        treetype(root);
 
         var treeCanvas = svg.append('g')
                 .attr('id','tree')

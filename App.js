@@ -36,24 +36,24 @@ Ext.define('CustomApp', {
         ];
     },
 
-    _appendGETPromise: function(mt) {
+    _appendGETPromise: function(mt, fieldList) {
 
         var deferred = Ext.create('Deft.Deferred');
-        var fieldList ='Name,Parent,ElementName,DisplayName';
         var service = Rally.util.Ref.getUrl(this.getContext().getWorkspace()._ref);
-        Ext.Ajax.request(
-            {
-                url: service.substring(0, service.lastIndexOf('/workspace/')) + mt + '?fetch=' + fieldList,
-                method: "GET",
-                scope: this,
-                success: function(response) {
-                    deferred.resolve(response);
-                },
-                failure: function(error) {
-                    deferred.reject(error);
-                }
+        if (mt.startsWith("https")) { service = '';}
+        var options =  Ext.clone({
+            url: service.substring(0, service.lastIndexOf('/workspace/')) + mt + '?fetch=' + fieldList,
+            method: "GET",
+            scope: this,
+            success: function(response) {
+                deferred.resolve(response);
+            },
+            failure: function(error) {
+                deferred.reject(error);
             }
-        );
+        });
+
+        Ext.Ajax.request(options);
         return deferred.promise;
     },
     
@@ -106,23 +106,140 @@ Ext.define('CustomApp', {
         var nodes = treeCanvas.selectAll(".node")
             .data(root.descendants())
             .enter().append('g')
+            .attr('id', function(d) {
+                return 'group' + d.data.Name;
+            })
             .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
 
         nodes.append('circle')
             .attr('r', 5)
-            .attr('class', 'circle');
+            .attr('class', 'circle')
+            .on('mouseover', function(node,index, array) { gApp._nodeMouseOver(node, index, array);})
+            .on('mouseout', function(node,index, array) { gApp._nodeMouseOut(node, index, array);});
 
         nodes.append('text')
             .attr('class', 'text')
             .attr('x' , 10)
             .attr('y', 0)
+            .attr('id', function(d) {
+                return 'text' + d.data.Name;
+            })
             .style('text-anchor', 'start')
             .text(function(d) {
                 return d.data.Description;
             });
     },
 
-    launch: function() {
+    _createTable(node, data, fields) {
+        var columnWidth = 200;
+        var rowHeight = 20;
+        var xOffset = 0;
+        var yOffset = 0;
+
+        //We need to check whther we will overwrite off the side of the screen
+        //Find out where 'g' is located
+        var g = node.attributes;
+        //Get the size of SVG panel
+        var svg = d3.select('svg');
+        var canvasWidth = svg.attr('width');
+        var canvasHeight = svg.attr('height');
+
+        if ( node.y + (fields.length * columnWidth) > canvasWidth) {
+            xOffset = -1 * ( (fields.length * columnWidth) + 25);
+        }
+
+        if ( node.x + (data.length * rowHeight) > canvasHeight) {
+            yOffset = -1 * ( node.x + (data.length * rowHeight) - canvasHeight);
+        }
+
+        console.log( canvasWidth, canvasHeight, node.x, node.y, xOffset, yOffset);
+
+        //Draw title box
+        g.append('rect')
+            .attr('width', columnWidth * fields.length)
+            .attr('height', rowHeight)
+            .attr('transform', 'translate(' + xOffset + ','+(-rowHeight+yOffset)+')')
+            .attr('class', 'tableTitle');
+
+        g.append('text')
+            .attr('transform', 'translate(' + (xOffset+((columnWidth * fields.length)/2)) + ','+(-(rowHeight*0.3)+yOffset)+')')
+            .attr('class', 'titleText')
+            .style('text-anchor', 'middle')
+            .text( function() { return node.data.Description + ' Attributes';});
+
+        //Draw header blocks
+        for ( var i = 0; i < fields.length; i++) {
+            g.append('rect')
+                .attr('width', columnWidth)
+                .attr('height', rowHeight)
+                .attr('x', (columnWidth * i) + xOffset)
+                .attr('y', yOffset)
+                .attr('class', 'tableHdrBlk');
+            g.append('text')
+                .attr('x',(columnWidth * i)+5+ xOffset)
+                .attr('y', (rowHeight * 0.6) + yOffset)
+                .text(function() { 
+                    return fields[i].title;
+                })
+                .attr('class', 'tableText');
+        }
+
+        for ( var j = 0; j < data.length; j++) {
+            for ( var i = 0; i < fields.length; i++) {
+                g.append('rect')
+                    .attr('width', columnWidth)
+                    .attr('height', rowHeight)
+                    .attr('x', (columnWidth * i) + xOffset)
+                    .attr('y', ((j+1) * rowHeight) + yOffset)
+                    .attr('class', 'tableRowBlk');
+                g.append('text')
+                    .attr('x',((columnWidth * i)+5) + xOffset)
+                    .attr('y', (rowHeight * (j+1.6)) + yOffset)
+                    .text(function() { 
+                        return data[j][fields[i].name];
+                    })
+                    .attr('class', 'tableText');
+            }
+    
+        }
+    },
+
+    _nodeMouseOver: function(node,index,array) {
+        if ( node.gotAttributes) {
+            var result = node.attributes && node.attributes.attr("visibility","visible");
+        }
+        else {
+            node.gotAttributes = true;
+            //For each attribute associated with this type, we need to know which ones relate to other types
+            //in out hierarchy.
+            var attribs = [];
+            var fieldList = [
+                { name: 'Name', title: 'Display Name'},
+                { name: 'RealAttributeType', title: 'Attribute Type'},
+                { name: 'ElementName', title: 'WSAPI Name'}
+            ];
+
+            console.log(node.data.data.Attributes._ref);
+            attribs.push(gApp._appendGETPromise(node.data.data.Attributes._ref, _.pluck(fieldList, 'name')));
+            Deft.Promise.all(attribs).then( {
+                success: function(result){
+                    var data = Ext.JSON.decode(result[0].responseText); //We only get one here so use [0]
+                    //So that we can overwrite on top of the graph, we need to add these on the svg element
+                    node.attributes = d3.select('svg').append('g')
+                                            //'tree' is transformed to be 25 from left edge and then shift by further 20
+                                            .attr('transform','translate(' + (node.y+25+20) + ',' + node.x + ')');
+                    gApp._createTable(node, data.QueryResult.Results, fieldList);
+                }
+            });
+       }
+
+       //Start a timer to hide after
+    },
+
+    _nodeMouseOut: function(node,index,array) {
+        if ( node.gotAttributes) {
+            var result = node.attributes && node.attributes.attr("visibility","hidden");
+        }
     },
 
     _onElementValid(rootSurface)
@@ -131,11 +248,10 @@ Ext.define('CustomApp', {
         //Sync the svg system with the Ext one
         gApp._setSVGSize(rootSurface);
 
-        //Find the version of WSAPI and append to string
-
         //Get the whole set of TypeDefinitions
         Ext.create('Rally.data.wsapi.Store', {
             model: 'TypeDefinition',
+            fetch: ['ElementName','DisplayName', 'Attributes', 'Parent'],
             autoLoad: true,
             listeners: {
                 load: function (store,data,success) {
@@ -160,7 +276,8 @@ Ext.define('CustomApp', {
 
                         var getAll =[];
                         _.each(abstractTypes, function (mt) {
-                            getAll.push(gApp._appendGETPromise(mt));
+                            var fieldList ='Name,Parent,ElementName,DisplayName,Attributes';
+                            getAll.push(gApp._appendGETPromise(mt, fieldList));
                         });
 
                         Deft.Promise.all(getAll).then({

@@ -46,9 +46,11 @@ Ext.define('CustomApp', {
             method: "GET",
             scope: this,
             success: function(response) {
+                console.log('resolved: ', response);
                 deferred.resolve(response);
             },
             failure: function(error) {
+                console.log('errored: ', error);
                 deferred.reject(error);
             }
         });
@@ -76,6 +78,7 @@ Ext.define('CustomApp', {
     },
 
     _drawTree: function(root) {
+        console.log('Drawing tree');
         var svg = d3.select('svg');
 
         //Apply the tree calc function to the nodes
@@ -225,14 +228,18 @@ Ext.define('CustomApp', {
 
             attribs.push(gApp._appendGETPromise(node.data.data.Attributes._ref, _.pluck(fieldList, 'name')));
             Deft.Promise.all(attribs).then( {
-                success: function(result){
-                    var data = Ext.JSON.decode(result[0].responseText); //We only get one here so use [0]
-                    console.log(data);
+                success: function(results){
+                    console.log('Attribute fetch :', results);
+                    var data = Ext.JSON.decode(results[0].responseText); //We only get one here so use [0]
+
                     //So that we can overwrite on top of the graph, we need to add these on the svg element
                     node.attributes = d3.select('svg').append('g')
                                             //'tree' is transformed to be 25 from left edge and then shift by further 20
                                             .attr('transform','translate(' + (node.y+25+20) + ',' + node.x + ')');
                     gApp._createTable(node, data.QueryResult.Results, fieldList);
+                },
+                failure: function(arg) {
+                    console.log('Deft.Promise.all failed');
                 }
             });
        }
@@ -255,7 +262,13 @@ Ext.define('CustomApp', {
         //Get the whole set of TypeDefinitions
         Ext.create('Rally.data.wsapi.Store', {
             model: 'TypeDefinition',
-            fetch: ['ElementName','DisplayName', 'Attributes', 'Parent'],
+            fetch: ['Name', 'ElementName','DisplayName', 'Attributes', 'Parent'],
+            // sorters: [
+            //     {
+            //         property: 'Name',
+            //         direction: 'ASC'
+            //     }
+            // ],
             autoLoad: true,
             listeners: {
                 load: function (store,data,success) {
@@ -284,6 +297,7 @@ Ext.define('CustomApp', {
 
                         Deft.Promise.all(getAll).then({
                             success: function(results) {
+                                console.log('Received Promises: ', results);
                                 _.each(results, function(result) {
                                     //We will have the responseText as a JSON string. Parse this to an object and add to the node array
                                     var data = Ext.JSON.decode(result.responseText).TypeDefinition;
@@ -295,9 +309,17 @@ Ext.define('CustomApp', {
                                 });
 
                                 gApp._drawTree(gApp._createRoot(nodes));
+                            },
+                            failure: function(error) {
+                                console.log('Get initial data Promise failed');
                             }
                         });
                     }
+                    else {
+                        debugger;
+                        Rally.ui.notify.Notifier.show('Failed to fetch initial type records');
+                    }
+                    
                 }
             }
         });

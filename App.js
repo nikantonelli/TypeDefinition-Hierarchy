@@ -136,6 +136,8 @@ Ext.define('CustomApp', {
         var xOffset = 0;
         var yOffset = 0;
 
+        data = _.sortBy(data, '_refObjectName');
+
         //We need to check whther we will overwrite off the side of the screen
         //Find out where 'g' is located
         var g = node.attributes;
@@ -151,8 +153,6 @@ Ext.define('CustomApp', {
         if ( node.x + (data.length * rowHeight) > canvasHeight) {
             yOffset = -1 * ( node.x + (data.length * rowHeight) - canvasHeight);
         }
-
-        console.log( canvasWidth, canvasHeight, node.x, node.y, xOffset, yOffset);
 
         //Draw title box
         g.append('rect')
@@ -196,6 +196,9 @@ Ext.define('CustomApp', {
                     .attr('x',((columnWidth * i)+5) + xOffset)
                     .attr('y', (rowHeight * (j+1.6)) + yOffset)
                     .text(function() { 
+                        if ( 'object' === typeof data[j][fields[i].name]) {
+                            return data[j][fields[i].name] ? data[j][fields[i].name]._refObjectName : '';
+                        }
                         return data[j][fields[i].name];
                     })
                     .attr('class', 'tableText');
@@ -216,14 +219,15 @@ Ext.define('CustomApp', {
             var fieldList = [
                 { name: 'Name', title: 'Display Name'},
                 { name: 'RealAttributeType', title: 'Attribute Type'},
-                { name: 'ElementName', title: 'WSAPI Name'}
+                { name: 'ElementName', title: 'WSAPI Name'},
+                { name: 'AllowedValueType', title: 'Element Type'}
             ];
 
-            console.log(node.data.data.Attributes._ref);
             attribs.push(gApp._appendGETPromise(node.data.data.Attributes._ref, _.pluck(fieldList, 'name')));
             Deft.Promise.all(attribs).then( {
                 success: function(result){
                     var data = Ext.JSON.decode(result[0].responseText); //We only get one here so use [0]
+                    console.log(data);
                     //So that we can overwrite on top of the graph, we need to add these on the svg element
                     node.attributes = d3.select('svg').append('g')
                                             //'tree' is transformed to be 25 from left edge and then shift by further 20
@@ -255,8 +259,6 @@ Ext.define('CustomApp', {
             autoLoad: true,
             listeners: {
                 load: function (store,data,success) {
-                
-                    console.log('Loaded ' + data.length + ' typedefs');
                     if (success) {
                         var nodes = [];
                         

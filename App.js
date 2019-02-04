@@ -42,7 +42,7 @@ Ext.define('CustomApp', {
         var service = Rally.util.Ref.getUrl(this.getContext().getWorkspace()._ref);
         if (mt.startsWith("https")) { service = '';}
         var options =  Ext.clone({
-            url: service.substring(0, service.lastIndexOf('/workspace/')) + mt + '?fetch=' + fieldList,
+            url: service.substring(0, service.lastIndexOf('/workspace/')) + mt + '?fetch=' + encodeURIComponent(fieldList),
             method: "GET",
             scope: this,
             success: function(response) {
@@ -316,7 +316,6 @@ Ext.define('CustomApp', {
                         });
                     }
                     else {
-                        debugger;
                         Rally.ui.notify.Notifier.show('Failed to fetch initial type records');
                     }
                     

@@ -60,12 +60,13 @@ Ext.define('CustomApp', {
     },
     
     _createRoot: function(nodes) {
+        debugger;
         var root = d3.stratify()
             .id( function(d) {
                 return d.Name;
             })
             .parentId( function(d) { 
-                return (d.data && d.data.Parent && d.data.Parent.ElementName);
+                return (d.data && d.data.Parent && d.data.Parent._ref.substring(d.data.Parent._ref.lastIndexOf('/typedefinition/')));
             })
             (nodes);
         return root;
@@ -263,12 +264,12 @@ Ext.define('CustomApp', {
         Ext.create('Rally.data.wsapi.Store', {
             model: 'TypeDefinition',
             fetch: ['Name', 'ElementName','DisplayName', 'Attributes', 'Parent'],
-            // sorters: [
-            //     {
-            //         property: 'Name',
-            //         direction: 'ASC'
-            //     }
-            // ],
+            sorters: [
+                {
+                    property: 'Name',
+                    direction: 'ASC'
+                }
+            ],
             autoLoad: true,
             listeners: {
                 load: function (store,data,success) {
@@ -277,13 +278,13 @@ Ext.define('CustomApp', {
                         
                         //Push them into an array we can reconfigure
                         _.each(data, function(record) {
-                            nodes.push({'Name': record.get('ElementName'), 'data': record.data, 'Description': record.get('DisplayName') });
+                            nodes.push({'Name': record.get('_ref'), 'data': record.data, 'Description': record.get('DisplayName') });
                         });
 
                         //Scan looking for missing (abstract) ones and fetch those directly
                         var abstractTypes = [];
                         _.each(nodes, function (node) {
-                            if ( undefined === _.find( nodes, { 'Name': node.data.Parent.ElementName})){
+                            if ( undefined === _.find( nodes, { 'Name': node.data.Parent._ref})){
                                 abstractTypes.push(node.data.Parent._ref);
                             }
                         });
@@ -302,12 +303,15 @@ Ext.define('CustomApp', {
                                     //We will have the responseText as a JSON string. Parse this to an object and add to the node array
                                     var data = Ext.JSON.decode(result.responseText).TypeDefinition;
                                     nodes.push( {
-                                        Name: data.ElementName,
+                                        Name: data._ref.substring(data._ref.lastIndexOf('/typedefinition/')),
                                         data: data,
                                         Description: data.DisplayName
                                     });
                                 });
 
+                                _.each(nodes,function(d) {
+                                    d.Parent = d.data.Parent && d.data.Parent.Name;
+                                });
                                 gApp._drawTree(gApp._createRoot(nodes));
                             },
                             failure: function(error) {

@@ -1,12 +1,22 @@
+
+
 Ext.define('CustomApp', {
     extend: 'Rally.app.App',
     componentCls: 'app',
     itemId: 'rallyApp',
     items: [
         {
+            xtype: 'rallybutton',
+            itemId: 'printPDF',
+            text: 'PDF',
+            handler: function() {
+                gApp._printPDF();
+            }
+        },
+        {
             xtype: 'container',
             itemId: 'rootSurface',
-            width: 1920,
+            width: 2200,
             height: 1080,
             margin: '5 5 5 5',
             layout: 'auto',
@@ -36,6 +46,13 @@ Ext.define('CustomApp', {
         ];
     },
 
+    _printPDF: function() {
+        var svg = d3.select('svg');
+        var pdf = new jsPDF('l', 'pt', [svg.attr('width'), svg.attr('height') ]);
+        svg2pdf(svg.node(), pdf, {});
+        pdf.save('typedef.pdf');
+    },
+
     _appendGETPromise: function(mt, fieldList) {
 
         var deferred = Ext.create('Deft.Deferred');
@@ -60,7 +77,6 @@ Ext.define('CustomApp', {
     },
     
     _createRoot: function(nodes) {
-        debugger;
         var root = d3.stratify()
             .id( function(d) {
                 return d.Name;
@@ -99,7 +115,9 @@ Ext.define('CustomApp', {
         gApp.links = treeCanvas.selectAll(".link")
             .data(root.descendants().slice(1))
             .enter().append("path")
-            .attr("class", 'link')
+            .attr("fill", 'none')
+            .attr('stroke' , '#83cbe4')
+            .attr('stroke-width', '2px')
             .attr("d", function(d) {
                     return "M" + d.y + "," + d.x +
                          "C" + (d.parent.y + 100) + "," + d.x +
@@ -121,10 +139,14 @@ Ext.define('CustomApp', {
             .on('mouseover', function(node,index, array) { gApp._nodeMouseOver(node, index, array);})
             .on('mouseout', function(node,index, array) { gApp._nodeMouseOut(node, index, array);});
 
+        /* Prefetch the attributes in case we get to print later */
+        nodes.each(gApp._fetchAttributes);
+
         nodes.append('text')
-            .attr('class', 'text')
+            .attr('font-size', '22px')
+            .attr('font-family', "tahoma,geneva,helvetica,arial,sans-serif")
             .attr('x' , 10)
-            .attr('y', 0)
+            .attr('y', 5)
             .attr('id', function(d) {
                 return 'text' + d.data.Name;
             })
@@ -145,6 +167,8 @@ Ext.define('CustomApp', {
         //We need to check whther we will overwrite off the side of the screen
         //Find out where 'g' is located
         var g = node.attributes;
+        g.attr('visibility', 'hidden');
+
         //Get the size of SVG panel
         var svg = d3.select('svg');
         var canvasWidth = svg.attr('width');
@@ -169,22 +193,20 @@ Ext.define('CustomApp', {
             .attr('transform', 'translate(' + (xOffset+((columnWidth * fields.length)/2)) + ','+(-(rowHeight*0.3)+yOffset)+')')
             .attr('class', 'titleText')
             .style('text-anchor', 'middle')
-            .text( function() { return node.data.Description + ' Attributes';});
+            .text( node.data.Description + ' Attributes');
 
         //Draw header blocks
-        for ( var i = 0; i < fields.length; i++) {
+        for ( var p = 0; p < fields.length; p++) {
             g.append('rect')
                 .attr('width', columnWidth)
                 .attr('height', rowHeight)
-                .attr('x', (columnWidth * i) + xOffset)
+                .attr('x', (columnWidth * p) + xOffset)
                 .attr('y', yOffset)
                 .attr('class', 'tableHdrBlk');
             g.append('text')
-                .attr('x',(columnWidth * i)+5+ xOffset)
+                .attr('x',(columnWidth * p)+5+ xOffset)
                 .attr('y', (rowHeight * 0.6) + yOffset)
-                .text(function() { 
-                    return fields[i].title;
-                })
+                .text( fields[p].title)
                 .attr('class', 'tableText');
         }
 
@@ -215,37 +237,37 @@ Ext.define('CustomApp', {
         if ( node.gotAttributes) {
             var result = node.attributes && node.attributes.attr("visibility","visible");
         }
-        else {
-            node.gotAttributes = true;
-            //For each attribute associated with this type, we need to know which ones relate to other types
-            //in out hierarchy.
-            var attribs = [];
-            var fieldList = [
-                { name: 'Name', title: 'Display Name'},
-                { name: 'RealAttributeType', title: 'Attribute Type'},
-                { name: 'ElementName', title: 'WSAPI Name'},
-                { name: 'AllowedValueType', title: 'Element Type'}
-            ];
+    },
 
-            attribs.push(gApp._appendGETPromise(node.data.data.Attributes._ref, _.pluck(fieldList, 'name')));
-            Deft.Promise.all(attribs).then( {
-                success: function(results){
-                    console.log('Attribute fetch :', results);
-                    var data = Ext.JSON.decode(results[0].responseText); //We only get one here so use [0]
+    _fetchAttributes: function(node) {
 
-                    //So that we can overwrite on top of the graph, we need to add these on the svg element
-                    node.attributes = d3.select('svg').append('g')
-                                            //'tree' is transformed to be 25 from left edge and then shift by further 20
-                                            .attr('transform','translate(' + (node.y+25+20) + ',' + node.x + ')');
-                    gApp._createTable(node, data.QueryResult.Results, fieldList);
-                },
-                failure: function(arg) {
-                    console.log('Deft.Promise.all failed');
-                }
-            });
-       }
+        //For each attribute associated with this type, we need to know which ones relate to other types
+        //in out hierarchy.
+        var attribs = [];
+        var fieldList = [
+            { name: 'Name', title: 'Display Name'},
+            { name: 'RealAttributeType', title: 'Attribute Type'},
+            { name: 'ElementName', title: 'WSAPI Name'},
+            { name: 'AllowedValueType', title: 'Element Type'}
+        ];
 
-       //Start a timer to hide after
+        attribs.push(gApp._appendGETPromise(node.data.data.Attributes._ref, _.pluck(fieldList, 'name')));
+        Deft.Promise.all(attribs).then( {
+            success: function(results){
+                console.log('Attribute fetch :', results);
+                node.gotAttributes = true;
+                var data = Ext.JSON.decode(results[0].responseText); //We only get one here so use [0]
+
+                //So that we can overwrite on top of the graph, we need to add these on the svg element
+                node.attributes = d3.select('svg').append('g')
+                                        //'tree' is transformed to be 25 from left edge and then shift by further 20
+                                        .attr('transform','translate(' + (node.y+25+20) + ',' + node.x + ')');
+                gApp._createTable(node, data.QueryResult.Results, fieldList);
+            },
+            failure: function(arg) {
+                console.log('Deft.Promise.all failed');
+            }
+        });
     },
 
     _nodeMouseOut: function(node,index,array) {
@@ -256,7 +278,6 @@ Ext.define('CustomApp', {
 
     _onElementValid(rootSurface)
     {
-
         //Sync the svg system with the Ext one
         gApp._setSVGSize(rootSurface);
 

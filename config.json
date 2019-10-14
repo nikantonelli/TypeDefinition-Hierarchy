@@ -4,8 +4,11 @@
     "server": "https://rally1.rallydev.com",
     "sdk": "2.1",
     "javascript": [
-        "App.js",
-        "d3.js"
+        "d3.js",
+        "jspdf.js",
+        "svg2pdf.js",
+        "FileSaver.js",
+        "App.js"
     ],
     "css": [
         "app.css"

@@ -16,8 +16,6 @@ Ext.define('CustomApp', {
         {
             xtype: 'container',
             itemId: 'rootSurface',
-            width: 2200,
-            height: 1080,
             margin: '5 5 5 5',
             layout: 'auto',
             autoEl: {
@@ -88,10 +86,10 @@ Ext.define('CustomApp', {
         return root;
     },
 
-    _setSVGSize: function(rs){
+    _setSVGSize: function(){
         var svg = d3.select('svg');
-        svg.attr('width', rs.getEl().dom.clientWidth);
-        svg.attr('height',rs.getEl().dom.clientHeight);
+        svg.attr('width', this.getEl().dom.clientWidth);
+        svg.attr('height',this.getEl().dom.clientHeight - this.down('#printPDF').getEl().dom.clientHeight);
     },
 
     _drawTree: function(root) {
@@ -143,7 +141,7 @@ Ext.define('CustomApp', {
         nodes.each(gApp._fetchAttributes);
 
         nodes.append('text')
-            .attr('font-size', '22px')
+            .attr('font-size', '12px')
             .attr('font-family', "tahoma,geneva,helvetica,arial,sans-serif")
             .attr('x' , 10)
             .attr('y', 5)
@@ -279,7 +277,8 @@ Ext.define('CustomApp', {
     _onElementValid(rootSurface)
     {
         //Sync the svg system with the Ext one
-        gApp._setSVGSize(rootSurface);
+        debugger;
+        gApp._setSVGSize();
 
         //Get the whole set of TypeDefinitions
         Ext.create('Rally.data.wsapi.Store', {

@@ -19226,21 +19226,6 @@ var jsPDF = function (global) {
 
           return "data:application/pdf;filename=" + options.filename + ";base64," + dataURI;
 
-        case "pdfobjectnewwindow":
-          if (Object.prototype.toString.call(global) === "[object Window]") {
-            var pdfObjectUrl = options.pdfObjectUrl || "https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.1.1/pdfobject.min.js";
-            var htmlForNewWindow = "<html>" + '<style>html, body { padding: 0; margin: 0; } iframe { width: 100%; height: 100%; border: 0;}  </style><body><script src="' + pdfObjectUrl + '"></script><script >PDFObject.embed("' + this.output("dataurlstring") + '", ' + JSON.stringify(options) + ");</script></body></html>";
-            var nW = global.open();
-
-            if (nW !== null) {
-              nW.document.write(htmlForNewWindow);
-            }
-
-            return nW;
-          } else {
-            throw new Error("The option pdfobjectnewwindow just works in a browser-environment.");
-          }
-
         case "pdfjsnewwindow":
           if (Object.prototype.toString.call(global) === "[object Window]") {
             var pdfJsUrl = options.pdfJsUrl || "examples/PDF.js/web/viewer.html";
@@ -49538,8 +49523,6 @@ Ext.define('CustomApp', {
         {
             xtype: 'container',
             itemId: 'rootSurface',
-            width: 2200,
-            height: 1080,
             margin: '5 5 5 5',
             layout: 'auto',
             autoEl: {
@@ -49610,10 +49593,10 @@ Ext.define('CustomApp', {
         return root;
     },
 
-    _setSVGSize: function(rs){
+    _setSVGSize: function(){
         var svg = d3.select('svg');
-        svg.attr('width', rs.getEl().dom.clientWidth);
-        svg.attr('height',rs.getEl().dom.clientHeight);
+        svg.attr('width', this.getEl().dom.clientWidth);
+        svg.attr('height',this.getEl().dom.clientHeight - this.down('#printPDF').getEl().dom.clientHeight);
     },
 
     _drawTree: function(root) {
@@ -49665,7 +49648,7 @@ Ext.define('CustomApp', {
         nodes.each(gApp._fetchAttributes);
 
         nodes.append('text')
-            .attr('font-size', '22px')
+            .attr('font-size', '12px')
             .attr('font-family', "tahoma,geneva,helvetica,arial,sans-serif")
             .attr('x' , 10)
             .attr('y', 5)
@@ -49801,7 +49784,8 @@ Ext.define('CustomApp', {
     _onElementValid(rootSurface)
     {
         //Sync the svg system with the Ext one
-        gApp._setSVGSize(rootSurface);
+        debugger;
+        gApp._setSVGSize();
 
         //Get the whole set of TypeDefinitions
         Ext.create('Rally.data.wsapi.Store', {

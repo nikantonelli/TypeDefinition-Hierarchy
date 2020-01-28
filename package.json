@@ -15,6 +15,7 @@
     "test:debug": "npm i && grunt test:debug"
   },
   "dependencies": {
-    "jspdf": "^1.5.3"
+    "jspdf": "^1.5.3",
+    "jspdf-yworks": "^2.1.1"
   }
 }

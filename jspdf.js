@@ -2823,21 +2823,6 @@ var jsPDF = function (global) {
 
           return "data:application/pdf;filename=" + options.filename + ";base64," + dataURI;
 
-        case "pdfobjectnewwindow":
-          if (Object.prototype.toString.call(global) === "[object Window]") {
-            var pdfObjectUrl = options.pdfObjectUrl || "https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.1.1/pdfobject.min.js";
-            var htmlForNewWindow = "<html>" + '<style>html, body { padding: 0; margin: 0; } iframe { width: 100%; height: 100%; border: 0;}  </style><body><script src="' + pdfObjectUrl + '"></script><script >PDFObject.embed("' + this.output("dataurlstring") + '", ' + JSON.stringify(options) + ");</script></body></html>";
-            var nW = global.open();
-
-            if (nW !== null) {
-              nW.document.write(htmlForNewWindow);
-            }
-
-            return nW;
-          } else {
-            throw new Error("The option pdfobjectnewwindow just works in a browser-environment.");
-          }
-
         case "pdfjsnewwindow":
           if (Object.prototype.toString.call(global) === "[object Window]") {
             var pdfJsUrl = options.pdfJsUrl || "examples/PDF.js/web/viewer.html";

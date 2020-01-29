@@ -49679,11 +49679,13 @@ Ext.define('CustomApp', {
         var canvasWidth = svg.attr('width');
         var canvasHeight = svg.attr('height');
 
-        if ( node.y + (fields.length * columnWidth) > canvasWidth) {
+        if (( (node.y + (fields.length * columnWidth)) > canvasWidth) && 
+                ((node.y - (fields.length * columnWidth)) >= 0)) {
             xOffset = -1 * ( (fields.length * columnWidth) + 25);
         }
 
-        if ( node.x + (data.length * rowHeight) > canvasHeight) {
+        if (( (node.x + (data.length * rowHeight)) > canvasHeight) && 
+                ((node.x - (data.length * rowHeight)) >=0 )) {
             yOffset = -1 * ( node.x + (data.length * rowHeight) - canvasHeight);
         }
 
@@ -49723,24 +49725,23 @@ Ext.define('CustomApp', {
                     .attr('x', (columnWidth * i) + xOffset)
                     .attr('y', ((j+1) * rowHeight) + yOffset)
                     .attr('class', 'tableRowBlk');
+                var tstring = data[j][fields[i].name];
+                if ( 'object' === typeof data[j][fields[i].name]) {
+                    tstring = data[j][fields[i].name] ? data[j][fields[i].name]._refObjectName : '';
+                }
                 g.append('text')
                     .attr('x',((columnWidth * i)+5) + xOffset)
                     .attr('y', (rowHeight * (j+1.6)) + yOffset)
-                    .text(function() { 
-                        if ( 'object' === typeof data[j][fields[i].name]) {
-                            return data[j][fields[i].name] ? data[j][fields[i].name]._refObjectName : '';
-                        }
-                        return data[j][fields[i].name];
-                    })
+                    .text(tstring)
                     .attr('class', 'tableText');
             }
     
         }
     },
 
-    _nodeMouseOver: function(node,index,array) {
+    _nodeMouseOver: function(node) {
         if ( node.gotAttributes) {
-            var result = node.attributes && node.attributes.attr("visibility","visible");
+            if (node.attributes) { node.attributes.attr("visibility","visible");}
         }
     },
 
@@ -49770,21 +49771,20 @@ Ext.define('CustomApp', {
                 gApp._createTable(node, data.QueryResult.Results, fieldList);
             },
             failure: function(arg) {
-                console.log('Deft.Promise.all failed');
+                console.log('Deft.Promise.all failed', arg);
             }
         });
     },
 
-    _nodeMouseOut: function(node,index,array) {
+    _nodeMouseOut: function(node) {
         if ( node.gotAttributes) {
-            var result = node.attributes && node.attributes.attr("visibility","hidden");
+            if (node.attributes) { node.attributes.attr("visibility","hidden");}
         }
     },
 
-    _onElementValid(rootSurface)
+    _onElementValid()
     {
         //Sync the svg system with the Ext one
-        debugger;
         gApp._setSVGSize();
 
         //Get the whole set of TypeDefinitions
@@ -49841,7 +49841,7 @@ Ext.define('CustomApp', {
                                 });
                                 gApp._drawTree(gApp._createRoot(nodes));
                             },
-                            failure: function(error) {
+                            failure: function() {
                                 console.log('Get initial data Promise failed');
                             }
                         });
